@@ -1,6 +1,8 @@
 
 class Q4Me::Client
 
+    EXIT = 999
+
     attr_reader :table, :dbh, :owner
 
     def initialize(conn, table)
@@ -38,6 +40,24 @@ class Q4Me::Client
 
     def abort()
         dbh.do("select queue_abort()") if @owner
+    end
+
+    def handle_next(condition = nil, &block)
+        row = wait_for_read(condition)
+        begin
+            ret = yield(row)
+            delete()
+            ret
+        rescue Exception => ex
+            return abort()
+        end
+    end
+
+    def handle_loop(condition = nil, &block)
+        while true
+            ret = handle_next(condition, &block)
+            return if ret == EXIT
+        end
     end
 
 end
